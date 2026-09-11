@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>습관 트래커</title>
+<style>
+  /* 구글 폰트 불러오기: 제목용 Gothic A1, 본문용 Noto Sans KR */
+  @import url('https://fonts.googleapis.com/css2?family=Gothic+A1:wght@700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+  :root {
+    --paper: #F7F4EC;   /* 배경색 (따뜻한 아이보리) */
+    --ink: #23301F;     /* 기본 글자색 (짙은 초록빛 검정) */
+    --ink-soft: #6B7263;/* 보조 글자색 (연한 회녹색) */
+    --moss: #4B7756;    /* 포커스/강조용 초록 */
+    --clay: #C97C4B;    /* 버튼 강조색 (테라코타) */
+    --line: #DDD8C8;    /* 테두리/구분선 색 */
+    --danger: #B5502E;  /* 삭제 버튼 hover용 색 */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--paper);
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--ink);
+    padding: 24px;
+  }
+
+  /* 화면 가운데의 흰색 카드 영역 */
+  .card {
+    width: 100%;
+    max-width: 440px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 36px 32px;
+  }
+
+  .card h1 {
+    font-family: 'Gothic A1', sans-serif;
+    font-weight: 900;
+    font-size: 26px;
+    margin: 0 0 6px;
+  }
+
+  .card p.subtitle {
+    margin: 0 0 28px;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+
+  /* 입력창 + 추가 버튼을 가로로 나란히 배치 */
+  .input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  #habitInput {
+    flex: 1; /* 남은 공간을 입력창이 모두 차지 */
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  #habitInput:focus {
+    outline: none;
+    border-color: var(--moss);
+  }
+
+  #addBtn {
+    border: none;
+    background: var(--clay);
+    color: #fff;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  /* 습관 목록이 들어갈 영역 (점선으로 입력 영역과 구분) */
+  .list-section {
+    border-top: 1px dashed var(--line);
+    padding-top: 20px;
+  }
+
+  #habitList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .empty-state {
+    color: var(--ink-soft);
+    font-size: 14px;
+    text-align: center;
+    padding: 12px 0;
+  }
+
+  /* JS로 새로 추가되는 습관 항목 한 줄의 스타일 */
+  .habit-item {
+    display: flex;
+    justify-content: space-between; /* 왼쪽: 체크+이름, 오른쪽: streak+삭제 */
+    align-items: center;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--line);
+    font-size: 15px;
+  }
+  .habit-item:last-child {
+    border-bottom: none; /* 맨 마지막 항목은 밑줄 없이 깔끔하게 */
+  }
+
+  /* 체크박스 + 이름을 묶는 영역 (label이라 이름을 눌러도 체크된다) */
+  .habit-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .habit-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--moss);
+    cursor: pointer;
+  }
+
+  /* 완료(done)된 습관의 이름 스타일 */
+  .habit-item.is-done .habit-name {
+    text-decoration: line-through;
+    color: var(--ink-soft);
+  }
+
+  /* streak 표시 + 삭제 버튼을 묶는 오른쪽 영역 */
+  .habit-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .habit-streak {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--clay);
+    white-space: nowrap;
+  }
+
+  /* 각 습관 항목의 삭제 버튼 */
+  .delete-btn {
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .delete-btn:hover {
+    color: #fff;
+    background: var(--danger);
+  }
+</style>
+</head>
+<body>
+
+  <main class="card">
+    <h1>나의 습관 트래커</h1>
+    <p class="subtitle">매일 작은 습관을 쌓아가 보세요</p>
+
+    <!-- 습관 이름 입력창 + 추가 버튼 -->
+    <div class="input-row">
+      <input type="text" id="habitInput" placeholder="예: 물 마시기, 책 읽기">
+      <button id="addBtn" type="button">추가</button>
+    </div>
+
+    <!-- 추가한 습관들이 나열될 목록 영역 -->
+    <div class="list-section">
+      <ul id="habitList"></ul>
+    </div>
+  </main>
+
+  <script>
+    // 1. 습관 데이터를 저장할 배열. 이제부터 화면이 아니라 이 배열이 "진짜 데이터"다.
+    let habits = [];
+    let nextId = 1; // 새 습관에 붙여줄 고유 번호 (1씩 증가)
+
+    // 2. 화면의 세 요소를 각각 변수에 담아둔다
+    const habitInput = document.getElementById('habitInput');
+    const addBtn = document.getElementById('addBtn');
+    const habitList = document.getElementById('habitList');
+
+    addBtn.addEventListener('click', addHabit);
+    habitInput.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        addHabit();
+      }
+    });
+
+    // 3. 습관을 "배열에" 추가하는 함수 (화면을 직접 건드리지 않는다!)
+    function addHabit() {
+      const habitName = habitInput.value.trim();
+      if (!habitName) return;
+
+      const newHabit = { id: nextId, name: habitName, streak: 0, done: false };
+      nextId++;
+      habits.push(newHabit); // 배열 끝에 새 습관 객체를 추가
+
+      habitInput.value = '';
+      habitInput.focus();
+
+      render(); // 배열이 바뀌었으니, 그 배열을 기준으로 화면을 다시 그린다
+    }
+
+    // 4. 배열(habits)을 기준으로 목록 화면 전체를 새로 그리는 함수
+    function render() {
+      habitList.innerHTML = ''; // 일단 목록을 깨끗이 비운다
+
+      if (habits.length === 0) {
+        // 배열이 비어있으면 안내 문구를 보여준다
+        const emptyLi = document.createElement('li');
+        emptyLi.className = 'empty-state';
+        emptyLi.textContent = '아직 추가된 습관이 없어요';
+        habitList.appendChild(emptyLi);
+        return;
+      }
+
+      // 배열에 담긴 습관 객체 하나하나를 <li>로 만들어 화면에 그린다
+      habits.forEach(function (habit) {
+        const li = document.createElement('li');
+        li.className = 'habit-item';
+        if (habit.done) li.classList.add('is-done'); // 완료된 습관은 스타일을 다르게
+
+        // 체크박스 + 이름을 묶는 label (이름을 눌러도 체크박스가 토글된다)
+        const mainLabel = document.createElement('label');
+        mainLabel.className = 'habit-main';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'habit-checkbox';
+        checkbox.checked = habit.done;
+        checkbox.addEventListener('change', function () {
+          toggleDone(habit.id);
+        });
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'habit-name';
+        nameSpan.textContent = habit.name;
+
+        mainLabel.appendChild(checkbox);
+        mainLabel.appendChild(nameSpan);
+
+        // streak 표시 + 삭제 버튼을 묶는 오른쪽 영역
+        const rightDiv = document.createElement('div');
+        rightDiv.className = 'habit-right';
+
+        const streakSpan = document.createElement('span');
+        streakSpan.className = 'habit-streak';
+        streakSpan.textContent = '🔥 ' + habit.streak + '일째';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = '삭제';
+        deleteBtn.addEventListener('click', function () {
+          deleteHabit(habit.id); // 이 습관의 id를 넘겨서 삭제 요청
+        });
+
+        rightDiv.appendChild(streakSpan);
+        rightDiv.appendChild(deleteBtn);
+
+        li.appendChild(mainLabel);
+        li.appendChild(rightDiv);
+        habitList.appendChild(li);
+      });
+    }
+
+    // 6. 배열에서 특정 id를 가진 습관만 제거하는 함수
+    function deleteHabit(habitId) {
+      // habitId와 다른 습관들만 남겨서 새 배열을 만든다 (== 해당 습관은 제외된다)
+      habits = habits.filter(function (habit) {
+        return habit.id !== habitId;
+      });
+
+      render(); // 배열이 바뀌었으니 화면을 다시 그린다
+    }
+
+    // 7. 체크 상태(done)를 뒤집고, 그에 맞춰 streak을 올리거나 내리는 함수
+    function toggleDone(habitId) {
+      // 배열에서 habitId와 같은 습관 객체를 찾는다
+      const habit = habits.find(function (h) {
+        return h.id === habitId;
+      });
+      if (!habit) return;
+
+      habit.done = !habit.done; // true ↔ false 뒤집기
+
+      if (habit.done) {
+        habit.streak = habit.streak + 1; // 체크하면 streak 1 증가
+      } else {
+        habit.streak = habit.streak - 1; // 체크 해제하면 streak 1 감소
+      }
+
+      render(); // 바뀐 데이터로 화면을 다시 그린다
+    }
+
+    // 5. 페이지를 처음 열었을 때도 한 번 그려준다 (지금은 배열이 비어있으니 안내 문구가 보인다)
+    render();
+  </script>
+
+</body>
+</html>
