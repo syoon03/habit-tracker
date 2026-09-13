@@ -15,7 +15,7 @@
     --moss: #4B7756;    /* 포커스/강조용 초록 */
     --clay: #C97C4B;    /* 버튼 강조색 (테라코타) */
     --line: #DDD8C8;    /* 테두리/구분선 색 */
-    --danger: #B5502E;  /* 삭제 버튼 hover용 색 */
+    --danger: #B5502E;  /* 삭제 버튼 hover / 경고 문구용 색 */
   }
 
   * { box-sizing: border-box; }
@@ -38,8 +38,9 @@
     max-width: 440px;
     background: #fff;
     border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 36px 32px;
+    border-radius: 18px;
+    padding: 40px 34px;
+    box-shadow: 0 24px 48px -30px rgba(35, 48, 31, 0.28);
   }
 
   .card h1 {
@@ -50,16 +51,62 @@
   }
 
   .card p.subtitle {
-    margin: 0 0 28px;
+    margin: 0 0 24px;
     font-size: 14px;
     color: var(--ink-soft);
+  }
+
+  /* 오늘의 진행률 영역 */
+  .progress-section {
+    margin-bottom: 26px;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  #progressText {
+    font-weight: 700;
+    color: var(--ink);
+  }
+  #progressPercent {
+    font-weight: 700;
+    color: var(--moss);
+  }
+  .progress-track {
+    height: 8px;
+    background: var(--paper);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--moss);
+    border-radius: 999px;
+    transition: width 0.25s ease;
   }
 
   /* 입력창 + 추가 버튼을 가로로 나란히 배치 */
   .input-row {
     display: flex;
     gap: 10px;
-    margin-bottom: 28px;
+    margin-bottom: 8px;
+  }
+
+  /* 빈 값 / 중복 입력 시 잠깐 보여줄 안내 문구 */
+  .input-hint {
+    min-height: 16px; /* 문구가 나타나도 레이아웃이 흔들리지 않도록 자리를 미리 확보 */
+    margin: 0 0 20px 2px;
+    font-size: 12px;
+    color: var(--danger);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .input-hint.show {
+    opacity: 1;
   }
 
   #habitInput {
@@ -98,6 +145,9 @@
     list-style: none;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* 항목 사이 간격을 선 대신 여백으로 표현 */
   }
 
   .empty-state {
@@ -107,17 +157,21 @@
     padding: 12px 0;
   }
 
-  /* JS로 새로 추가되는 습관 항목 한 줄의 스타일 */
+  /* JS로 새로 추가되는 습관 항목 한 줄의 스타일 (각 줄이 하나의 작은 카드) */
   .habit-item {
     display: flex;
     justify-content: space-between; /* 왼쪽: 체크+이름, 오른쪽: streak+삭제 */
     align-items: center;
-    padding: 10px 4px;
-    border-bottom: 1px solid var(--line);
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--paper); /* 미완료 습관: 은은한 아이보리 배경 */
     font-size: 15px;
+    transition: background 0.15s ease;
   }
-  .habit-item:last-child {
-    border-bottom: none; /* 맨 마지막 항목은 밑줄 없이 깔끔하게 */
+
+  /* 완료된 습관: 배경을 옅은 초록으로 바꿔 미완료와 한눈에 구분되게 */
+  .habit-item.is-done {
+    background: rgba(75, 119, 86, 0.12);
   }
 
   /* 체크박스 + 이름을 묶는 영역 (label이라 이름을 눌러도 체크된다) */
@@ -144,12 +198,15 @@
   .habit-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   .habit-streak {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--clay);
+    background: rgba(201, 124, 75, 0.14); /* 알약 모양 배지 배경 */
+    padding: 3px 10px;
+    border-radius: 999px;
     white-space: nowrap;
   }
 
@@ -176,11 +233,23 @@
     <h1>나의 습관 트래커</h1>
     <p class="subtitle">매일 작은 습관을 쌓아가 보세요</p>
 
+    <!-- 오늘 전체 습관 중 몇 개를 완료했는지 보여주는 진행률 -->
+    <div class="progress-section">
+      <div class="progress-label">
+        <span id="progressText">0/0 완료</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
     <!-- 습관 이름 입력창 + 추가 버튼 -->
     <div class="input-row">
       <input type="text" id="habitInput" placeholder="예: 물 마시기, 책 읽기">
       <button id="addBtn" type="button">추가</button>
     </div>
+    <p class="input-hint" id="inputHint"></p>
 
     <!-- 추가한 습관들이 나열될 목록 영역 -->
     <div class="list-section">
@@ -189,9 +258,36 @@
   </main>
 
   <script>
-    // 1. 습관 데이터를 저장할 배열. 이제부터 화면이 아니라 이 배열이 "진짜 데이터"다.
-    let habits = [];
-    let nextId = 1; // 새 습관에 붙여줄 고유 번호 (1씩 증가)
+    // 0. localStorage에 저장할 때 쓸 key 이름 (다른 사이트 데이터와 안 겹치게 고유한 이름으로)
+    const STORAGE_KEY = 'vibecoding_habit_tracker';
+
+    // 0-1. localStorage에서 습관 배열을 불러오는 함수
+    function loadHabits() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return []; // 저장된 게 없으면 빈 배열로 시작
+
+      try {
+        return JSON.parse(saved); // 문자열 → 배열/객체로 변환
+      } catch (e) {
+        return []; // 저장된 데이터가 손상됐다면 안전하게 빈 배열로 시작
+      }
+    }
+
+    // 0-2. 지금의 habits 배열을 localStorage에 저장하는 함수
+    function saveHabits() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(habits)); // 배열 → 문자열로 변환해 저장
+    }
+
+    // 0-3. 기존 습관들 중 가장 큰 id + 1을 다음 id로 사용한다 (id 중복 방지)
+    function getNextId(habitsArray) {
+      if (habitsArray.length === 0) return 1;
+      const ids = habitsArray.map(function (h) { return h.id; });
+      return Math.max.apply(null, ids) + 1;
+    }
+
+    // 1. 습관 데이터를 저장할 배열. localStorage에 저장된 게 있으면 그걸로 시작한다.
+    let habits = loadHabits();
+    let nextId = getNextId(habits); // 새 습관에 붙여줄 고유 번호
 
     // 2. 화면의 세 요소를 각각 변수에 담아둔다
     const habitInput = document.getElementById('habitInput');
@@ -208,7 +304,20 @@
     // 3. 습관을 "배열에" 추가하는 함수 (화면을 직접 건드리지 않는다!)
     function addHabit() {
       const habitName = habitInput.value.trim();
-      if (!habitName) return;
+
+      if (!habitName) {
+        showInputHint('습관 이름을 입력해주세요');
+        return; // 빈 값이면 여기서 함수를 끝낸다
+      }
+
+      // 이미 같은 이름의 습관이 있는지 확인한다 (some: 조건에 맞는 게 하나라도 있으면 true)
+      const isDuplicate = habits.some(function (habit) {
+        return habit.name === habitName;
+      });
+      if (isDuplicate) {
+        showInputHint('이미 추가된 습관이에요');
+        return; // 중복이면 추가하지 않고 함수를 끝낸다
+      }
 
       const newHabit = { id: nextId, name: habitName, streak: 0, done: false };
       nextId++;
@@ -217,11 +326,28 @@
       habitInput.value = '';
       habitInput.focus();
 
+      saveHabits(); // 배열이 바뀌었으니 localStorage에도 반영
       render(); // 배열이 바뀌었으니, 그 배열을 기준으로 화면을 다시 그린다
+    }
+
+    // 3-1. 입력창 아래에 안내 문구를 잠깐 보여주는 함수
+    let hintTimeoutId = null; // 이전에 걸어둔 타이머를 기억해뒀다가 취소하기 위한 변수
+
+    function showInputHint(message) {
+      const hintEl = document.getElementById('inputHint');
+      hintEl.textContent = message;
+      hintEl.classList.add('show');
+
+      clearTimeout(hintTimeoutId); // 문구가 연달아 나타날 때 이전 타이머를 취소해 겹치지 않게 한다
+      hintTimeoutId = setTimeout(function () {
+        hintEl.classList.remove('show');
+      }, 1500);
     }
 
     // 4. 배열(habits)을 기준으로 목록 화면 전체를 새로 그리는 함수
     function render() {
+      renderProgress(); // 목록을 그리기 전에 진행률부터 갱신
+
       habitList.innerHTML = ''; // 일단 목록을 깨끗이 비운다
 
       if (habits.length === 0) {
@@ -283,6 +409,17 @@
       });
     }
 
+    // 4-1. 오늘 전체 습관 중 몇 개를 완료했는지 계산해서 상단 진행률 바에 반영하는 함수
+    function renderProgress() {
+      const total = habits.length;
+      const done = habits.filter(function (habit) { return habit.done; }).length;
+      const percent = total === 0 ? 0 : Math.round((done / total) * 100);
+
+      document.getElementById('progressText').textContent = done + '/' + total + ' 완료';
+      document.getElementById('progressPercent').textContent = percent + '%';
+      document.getElementById('progressFill').style.width = percent + '%';
+    }
+
     // 6. 배열에서 특정 id를 가진 습관만 제거하는 함수
     function deleteHabit(habitId) {
       // habitId와 다른 습관들만 남겨서 새 배열을 만든다 (== 해당 습관은 제외된다)
@@ -290,6 +427,7 @@
         return habit.id !== habitId;
       });
 
+      saveHabits(); // 바뀐 배열을 localStorage에도 반영
       render(); // 배열이 바뀌었으니 화면을 다시 그린다
     }
 
@@ -309,6 +447,7 @@
         habit.streak = habit.streak - 1; // 체크 해제하면 streak 1 감소
       }
 
+      saveHabits(); // 바뀐 배열을 localStorage에도 반영
       render(); // 바뀐 데이터로 화면을 다시 그린다
     }
 
